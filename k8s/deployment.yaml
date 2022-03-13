@@ -28,23 +28,23 @@ spec:
           - name: RabbitMqConfig__Host
             valueFrom:
               secretKeyRef:
-                key: rabbitmq_host
-                name: azure-kv-secrets
+                name: azure-kv-secrets        # name of secretObject in SecretProviderClass
+                key: rabbitmq_host            # name of key in secretObject         
           - name: RabbitMqConfig__Username
             valueFrom:
               secretKeyRef:
-                key: rabbitmq_username
-                name: azure-kv-secrets
+                name: azure-kv-secrets        # name of secretObject in SecretProviderClass
+                key: rabbitmq_username        # name of key in secretObject         
           - name: RabbitMqConfig__Password
             valueFrom:
               secretKeyRef:
-                key: rabbitmq_password
-                name: azure-kv-secrets
+                name: azure-kv-secrets        # name of secretObject in SecretProviderClass
+                key: rabbitmq_password        # name of key in secretObject         
         volumeMounts:
           - name: appsettings-volume
             mountPath: /App/appsettings.json
             subPath: appsettings.json
-          - name: azure-secrets-mount
+          - name: azure-secrets-mount         # mount is still needed so driver creates secretObject
             mountPath: /mnt/secrets-store
             readOnly: true
       volumes:
@@ -56,6 +56,6 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: "kv-secret-test"
+              secretProviderClass: "<keyvault-name>"
             nodePublishSecretRef:
               name: secrets-store-creds
