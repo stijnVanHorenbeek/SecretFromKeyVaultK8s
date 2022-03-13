@@ -1,36 +1,36 @@
-export SUBSCRIPTION_ID=$(az account show --query id --output tsv)
-export TENANT_ID=$(az account show --query tenantId  --output tsv)
 
 # login as a user and set the appropriate subscription ID
 az login
-az account set -s "${SUBSCRIPTION_ID}"
 
-export KEYVAULT_RESOURCE_GROUP="aks-terraform-test-we-001"
-export KEYVAULT_LOCATION="westeurope"
-export KEYVAULT_NAME="kv-secret-test"
+export SUBSCRIPTION_ID=$(az account show --query id --output tsv)
+export TENANT_ID=$(az account show --query tenantId  --output tsv)
 
+export KEYVAULT_RESOURCE_GROUP="<resource-group>"
+export KEYVAULT_LOCATION="<location>"
+export KEYVAULT_NAME="<keyvault-name>"
 
+# add and install the secret-store-provider for azure keyvault with helm
 helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
 helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure --set secrets-store-csi-driver.syncSecret.enabled=true
 
+# if you don't have a keyvault create one
+az group create -n ${KEYVAULT_RESOURCE_GROUP} --location ${KEYVAULT_LOCATION}
+az keyvault create -n ${KEYVAULT_NAME} -g ${KEYVAULT_RESOURCE_GROUP} --location ${KEYVAULT_LOCATION}
 
-  az group create -n ${KEYVAULT_RESOURCE_GROUP} --location ${KEYVAULT_LOCATION}
-  az keyvault create -n ${KEYVAULT_NAME} -g ${KEYVAULT_RESOURCE_GROUP} --location ${KEYVAULT_LOCATION}
+# add secret
+az keyvault secret set --vault-name ${KEYVAULT_NAME} --name secret1 --value "Hello\!"
 
-    # add secret
-  az keyvault secret set --vault-name ${KEYVAULT_NAME} --name secret1 --value "Hello\!"
-
-# Create a service principal to access keyvault
+# (OPTIONAL) Create a service principal to access keyvault
 export SERVICE_PRINCIPAL_CLIENT_SECRET="$(az ad sp create-for-rbac --skip-assignment --name http://kv-secret-test --query 'password' -otsv)"
-export SERVICE_PRINCIPAL_CLIENT_ID="$(az ad sp show --id http://stijn.vanhorenbeek.xyz --query 'appId' -otsv)"
+export SERVICE_PRINCIPAL_CLIENT_ID="$(az ad sp show --id http://kv-secret-test --query 'appId' -otsv)"
 
 az keyvault set-policy -n ${KEYVAULT_NAME} --secret-permissions get --spn ${SERVICE_PRINCIPAL_CLIENT_ID}
 
-# only when accessing with service principal
+# only when accessing with service principal, create secret for SP
 kubectl create secret generic secrets-store-creds --from-literal clientid=${SERVICE_PRINCIPAL_CLIENT_ID} --from-literal clientsecret=${SERVICE_PRINCIPAL_CLIENT_SECRET}
 kubectl label secret secrets-store-creds secrets-store.csi.k8s.io/used=true
 
-
+# create a storage provider class
 cat <<EOF | kubectl apply -f -
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
@@ -53,7 +53,7 @@ spec:
     tenantId: "${TENANT_ID}"
 EOF
 
-
+# test pod, secret is available in pod mounted /mnt/secrets-store
 cat <<EOF | kubectl apply -f -
 kind: Pod
 apiVersion: v1
