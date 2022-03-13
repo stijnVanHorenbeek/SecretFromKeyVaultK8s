@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appsettings
+data:
+  appsettings.json: |-
+    {
+      "Logging": {
+        "LogLevel": {
+          "Default": "Information",
+          "Microsoft.AspNetCore": "Warning"
+        }
+      },
+      "AllowedHosts": "*",
+      "RabbitMqConfig": {
+        "Host": "host from configmap",
+        "UserName": "username in clear text from configmap",
+        "Password": "password in clear text from configmap",
+        "ExampleQueue": "Example.Queue from configmap"
+      }
+    }
+
